@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html> 
+  <head>
+    <title>Processing.JS inside Webpages: Template</title> 
+  </head>
+  <body>
+	<!--This draws the canvas on the webpage -->
+    <canvas id="mycanvas"></canvas> 
+  </body>
+ 
+  <!-- Include the processing.js library -->
+  
+  <script src="https://cdn.jsdelivr.net/processing.js/1.4.8/processing.min.js"></script> 
+  <script>
+  var programCode = function(processingInstance) {
+    with (processingInstance) {
+      size(400, 400); 
+      frameRate(90);
+      
+      /** 
+ * Use the left and right arrow keys to rotate the blue and red balls
+ * Click space to put the balls closer together
+ * Don't hit any of the white blocks
+**/
+
+
+var incroY = 0;
+
+
+var Line = function(y) {
+    this.y = y;
+    
+};
+
+Line.prototype.draw = function() {
+    strokeWeight(2);
+    stroke(150, 150, 150);
+    line(0,this.y,400,this.y);
+    this.y+=0.5;
+};
+
+
+var backgroundType = 1;
+
+var lines = [];
+for (var i = 0; i<12; i++) {
+    lines.push(new Line(399-(40*i)));
+    
+}
+
+
+
+
+var BSZ = 30; // ball size
+
+
+var blocks = [];
+var keys = [];
+keys[RIGHT]=0;keys[LEFT]=0;
+
+var plr = {
+    angle : 0,
+    size : 0,
+    red:{x:0, y:0},
+    blue:{x:0, y:0},
+    touching: false
+};
+
+var Streak = function(type) {
+    this.type = type;
+    this.incro = 0;
+    switch(this.type) {
+        case "blue":
+            this.x = plr.blue.x;
+            this.y = plr.blue.y;
+            this.color = color(0,0,255);
+            break;
+        case "red":
+            this.x = plr.red.x;
+            this.y = plr.red.y;
+            this.color = color(255, 0, 0);
+    }
+    this.alpha = 254;
+    
+    this.draw = function() {
+        if (this.alpha > 0) {
+            fill(red(this.color),green(this.color),blue(this.color),this.alpha);
+            ellipse(this.x,this.y+this.incro,30,30);
+            this.alpha-=20;
+            this.incro+=2.5;
+        }
+    };
+};
+
+
+keyPressed = function() {
+    keys[keyCode] = 1;
+};
+
+keyReleased = function() {
+    keys[keyCode] = 0;
+};
+
+
+var streaks = [];
+var ballsCode = function() {
+    
+    // shrink on space bar
+    plr.size = (keys[32]) ? 25 : 60;
+    // calc positions
+    plr.blue.x = 200 + plr.size * cos(plr.angle + 180);
+    plr.blue.y = 300 + plr.size * sin(plr.angle + 180);
+    plr.red.x = 200 + plr.size * cos(plr.angle);
+    plr.red.y = 300 + plr.size * sin(plr.angle);
+
+    // big circle
+    noFill();
+    strokeWeight(4);
+    stroke(176);
+    ellipse(200, 300, plr.size*2, plr.size*2);
+    // balls
+    noStroke();
+    fill(0, 0, 255);
+    ellipse(plr.blue.x, plr.blue.y, BSZ, BSZ);
+    fill(255, 0, 0);
+    ellipse(plr.red.x, plr.red.y, BSZ, BSZ);
+    
+    // spin speed
+    //NOTE: SPIN SPEED CHANGED FOR HTML VERSION
+    //plr.angle += 4.1 * (keys[RIGHT] - keys[LEFT]);
+
+    plr.angle += 0.05 * (keys[RIGHT] - keys[LEFT]);
+    
+    //streak
+    streaks.push(new Streak("red"));
+    streaks.push(new Streak("blue"));
+    for (var i = 0; i<streaks.length; i++) {
+        streaks[i].draw();
+    }
+    if (streaks.length > 20) {
+        streaks.splice(0,2);
+    }
+
+
+};
+
+
+// 1 = on left
+// 2 = on right
+// 3 = block down middle
+// 4 = gap in middle
+
+var Block = function(y, type) {
+    this.y = y;
+    this.x = 0;
+    this.color = color(255);
+    this.size = 210;
+    this.type = type;
+    switch (type){
+    case 4: this.size = 90; break;
+    case 2: this.x = 190; break;
+    case 3: this.x = 165; this.size=70; break;
+    case 4: this.size = 90; break;
+    }
+};
+
+Block.prototype.draw = function() {
+
+    fill(255, 255, 255);
+    if (this.type<4){
+        rect(this.x, this.y+incroY, this.size, 25);
+    }else{
+        rect(0, this.y+incroY, 160, 25);
+        rect(240, this.y+incroY, 160, 25);
+    }
+    
+// TEST  - see type
+    
+    
+};
+
+Block.prototype.clash = function(){
+    var b2 = BSZ/2;
+    var left = this.x-b2;
+    var top = this.y+incroY-b2;
+    var right = left+this.size+BSZ;
+    var bottom = top+25+BSZ;
+
+    if (this.type<4){
+        // red hit
+        if (plr.red.x>left && plr.red.x<right){
+            if (plr.red.y>top && plr.red.y<bottom){
+                plr.touching = true;
+            }
+        }
+        // blue hit
+        if (plr.blue.x>left && plr.blue.x<right){
+            if (plr.blue.y>top && plr.blue.y<bottom){
+                plr.touching = true;
+            }
+        }
+    }else{
+        // middle gap
+        // red hit
+        if (plr.red.x>(240-b2) || plr.red.x<(160+b2)){
+            if (plr.red.y>top && plr.red.y<bottom){
+                plr.touching = true;
+            }
+        }
+        // blue hit
+        if (plr.blue.x>(240-b2) || plr.blue.x<(160+b2)){
+            if (plr.blue.y>top && plr.blue.y<bottom){
+                plr.touching = true;
+            }
+        }
+    }
+    
+    
+};
+var backdropNum = round(random(1,4));
+
+
+
+
+
+
+// new game setup
+for (var i = 1; i<100; i++) {
+    blocks.push(new Block(200*-i, round(random(4))));
+}
+
+
+// stars
+
+
+//frameRate(80);  // speed adj (slow = testing)
+
+
+var score = 0;
+var highScore = 0;
+
+draw = function() {
+    //NPCs
+    background(0, 0, 0);
+
+    
+    //lines
+    for (var i = 0; i<lines.length; i++) {
+        lines[i].draw();
+        if (lines[i].y === 440) {
+            lines[i].y = -40;
+        }
+    }
+    
+    //scroll
+    //incroY += 2.1;
+    //NOTE: for html version, incro is slowed down 
+    incroY += 1.5
+    var top = -incroY-50;
+    var btm = -incroY+450;
+
+    // draw screen
+    
+    noStroke();
+    for (var i = 0; i<blocks.length; i++) {
+        if (blocks[i].y>top && blocks[i].y<btm){
+            blocks[i].clash();
+            blocks[i].draw();
+        }
+    }
+
+    // move/draw  player
+    ballsCode();
+
+    // game over
+    if (incroY>18000){
+        background(155, 80, 255);
+        fill(255, 0, 0);
+        text("YOU HAVE\n BEAT THE \nGAME!", 56, 134);
+        noLoop();
+    }
+    // send back if touching
+    if (plr.touching) {
+        incroY = 0;
+        plr.touching = false;
+        plr.angle = 0;
+        streaks.splice(0,streaks.length);
+    }
+    // scoring 
+    fill(0, 0, 255);
+    textSize(60);
+    textAlign(LEFT);
+    text(score, 10,10,100,100);
+    fill(255, 0, 0);
+    textAlign(RIGHT);
+    text(highScore, 290, 10, 100, 100);
+    score = floor(incroY/200);
+    if (score > highScore) {
+        highScore = score;
+    }
+    
+};
+
+
+    }};
+
+  // Get the canvas that ProcessingJS will use
+  var canvas = document.getElementById("mycanvas"); 
+  // Pass the function to ProcessingJS constructor
+  var processingInstance = new Processing(canvas, programCode); 
+  </script>
+</html>
